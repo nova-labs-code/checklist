@@ -115,7 +115,7 @@ button {
 }
 .subtasks-container {
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
 }
 @media (max-width: 500px) {
     input, .edit-input { font-size: 15px; }
@@ -179,14 +179,14 @@ function render() {
         leftDiv.appendChild(mainCheck);
         leftDiv.appendChild(title);
 
-        // Toggle subtasks visibility
+        // Collapse on single click, edit on double-click
         title.onclick = () => {
             task.collapsed = !task.collapsed;
             render();
         };
 
-        // Edit on click
-        title.ondblclick = () => {
+        title.ondblclick = (e) => {
+            e.stopPropagation(); // prevent toggling
             let edit = document.createElement("input");
             edit.className = "edit-input";
             edit.value = task.text;
@@ -204,10 +204,11 @@ function render() {
         row.appendChild(del);
         card.appendChild(row);
 
-        // Subtasks container with animation
+        // Subtasks container
         let subContainer = document.createElement("div");
         subContainer.className = "subtasks-container";
-        subContainer.style.maxHeight = task.collapsed ? "0" : `${(task.subtasks.length + 1) * 50}px`; // rough estimate
+        subContainer.style.opacity = task.collapsed ? "0" : "1";
+        subContainer.style.maxHeight = task.collapsed ? "0" : "1000px"; // large max-height to allow animation
 
         // Subtasks
         task.subtasks.forEach((sub, j) => {
@@ -234,7 +235,7 @@ function render() {
             subLeftDiv.appendChild(subCheck);
             subLeftDiv.appendChild(subTitle);
 
-            subTitle.onclick = () => {
+            subTitle.ondblclick = () => {
                 let edit = document.createElement("input");
                 edit.className = "edit-input";
                 edit.value = sub.text;
