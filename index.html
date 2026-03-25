@@ -67,28 +67,34 @@ button {
 .task-row {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* push delete button far right */
+    justify-content: space-between;
     margin-bottom: 5px;
 }
 .task-left {
     display: flex;
     align-items: center;
-    gap: 10px; /* space between checkbox and text */
+    gap: 10px;
 }
 .task-title {
-    font-size: 18px; /* bigger than before */
+    font-size: 18px;
     cursor: text;
     color: var(--text);
 }
 .task-title-heading {
     font-weight: bold;
-    font-size: 22px; /* bigger main task font */
+    font-size: 22px;
     color: var(--text);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+.task-title-heading:hover {
+    color: var(--accent);
 }
 .subtask-title {
-    font-size: 18px; /* bigger subtask font */
+    font-size: 18px;
     cursor: text;
-    color: var(--text); /* same as main text */
+    color: var(--text);
     margin-left: 0;
 }
 .completed span {
@@ -106,6 +112,10 @@ button {
     gap: 6px;
     margin-top: 10px;
     justify-content: flex-start;
+}
+.subtasks-container {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
 }
 @media (max-width: 500px) {
     input, .edit-input { font-size: 15px; }
@@ -131,7 +141,7 @@ function save() { localStorage.setItem("tasks", JSON.stringify(tasks)); }
 function addTask() {
     let input = document.getElementById("taskInput");
     if (!input.value.trim()) return;
-    tasks.push({ text: input.value, done: false, subtasks: [] });
+    tasks.push({ text: input.value, done: false, subtasks: [], collapsed: false });
     input.value = "";
     save();
     render();
@@ -145,7 +155,7 @@ function render() {
         let card = document.createElement("div");
         card.className = "task-card";
 
-        // Main task
+        // Main task row
         let row = document.createElement("div");
         row.className = "task-row";
 
@@ -161,16 +171,22 @@ function render() {
 
         let title = document.createElement("span");
         title.textContent = `${i+1}. ${task.text}`;
-        title.className = task.subtasks.length > 0 ? "task-title-heading" : "task-title";
+        title.className = "task-title-heading";
         if (task.done) title.style.textDecoration = "line-through";
-        title.style.cursor = "text";
 
         let leftDiv = document.createElement("div");
         leftDiv.className = "task-left";
         leftDiv.appendChild(mainCheck);
         leftDiv.appendChild(title);
 
+        // Toggle subtasks visibility
         title.onclick = () => {
+            task.collapsed = !task.collapsed;
+            render();
+        };
+
+        // Edit on click
+        title.ondblclick = () => {
             let edit = document.createElement("input");
             edit.className = "edit-input";
             edit.value = task.text;
@@ -187,6 +203,11 @@ function render() {
         row.appendChild(leftDiv);
         row.appendChild(del);
         card.appendChild(row);
+
+        // Subtasks container with animation
+        let subContainer = document.createElement("div");
+        subContainer.className = "subtasks-container";
+        subContainer.style.maxHeight = task.collapsed ? "0" : `${(task.subtasks.length + 1) * 50}px`; // rough estimate
 
         // Subtasks
         task.subtasks.forEach((sub, j) => {
@@ -230,7 +251,7 @@ function render() {
 
             subRow.appendChild(subLeftDiv);
             subRow.appendChild(delSub);
-            card.appendChild(subRow);
+            subContainer.appendChild(subRow);
         });
 
         // Add subtask
@@ -249,8 +270,9 @@ function render() {
         };
         addRow.appendChild(input);
         addRow.appendChild(btn);
-        card.appendChild(addRow);
+        subContainer.appendChild(addRow);
 
+        card.appendChild(subContainer);
         container.appendChild(card);
     });
 }
