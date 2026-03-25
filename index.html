@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist</title>
+<style>
+:root {
+    --bg: #eef1f5;
+    --card: #ffffff;
+    --text: #111;
+    --accent: #2563eb;
+    --danger: #e11d48;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #111827;
+        --card: #1f2937;
+        --text: #f9fafb;
+        --accent: #3b82f6;
+        --danger: #f87171;
+    }
+}
+body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+.app {
+    max-width: 700px;
+    margin: auto;
+    padding: 15px;
+}
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+input, .edit-input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+}
+.task-card {
+    background: var(--card);
+    padding: 12px;
+    border-radius: 14px;
+    margin-bottom: 15px;
+    box-shadow: 0 5px 12px rgba(0,0,0,0.08);
+}
+.task-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* push delete button far right */
+    margin-bottom: 5px;
+}
+.task-left {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* space between checkbox and text */
+}
+.task-title {
+    font-size: 18px; /* bigger than before */
+    cursor: text;
+    color: var(--text);
+}
+.task-title-heading {
+    font-weight: bold;
+    font-size: 22px; /* bigger main task font */
+    color: var(--text);
+}
+.subtask-title {
+    font-size: 18px; /* bigger subtask font */
+    cursor: text;
+    color: var(--text); /* same as main text */
+    margin-left: 0;
+}
+.completed span {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+.delete-small {
+    background: var(--danger);
+    font-size: 12px;
+    padding: 4px 6px;
+    cursor: pointer;
+}
+.add-sub {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    justify-content: flex-start;
+}
+@media (max-width: 500px) {
+    input, .edit-input { font-size: 15px; }
+    button { font-size: 13px; padding: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+    <h2>Checklist</h2>
+    <div class="input-row">
+        <input id="taskInput" placeholder="Add task...">
+        <button onclick="addTask()">Add</button>
+    </div>
+    <div id="taskList"></div>
+</div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+function save() { localStorage.setItem("tasks", JSON.stringify(tasks)); }
+
+function addTask() {
+    let input = document.getElementById("taskInput");
+    if (!input.value.trim()) return;
+    tasks.push({ text: input.value, done: false, subtasks: [] });
+    input.value = "";
+    save();
+    render();
+}
+
+function render() {
+    let container = document.getElementById("taskList");
+    container.innerHTML = "";
+
+    tasks.forEach((task, i) => {
+        let card = document.createElement("div");
+        card.className = "task-card";
+
+        // Main task
+        let row = document.createElement("div");
+        row.className = "task-row";
+
+        let mainCheck = document.createElement("input");
+        mainCheck.type = "checkbox";
+        mainCheck.checked = task.done;
+        mainCheck.onchange = () => {
+            task.done = mainCheck.checked;
+            task.subtasks.forEach(sub => sub.done = mainCheck.checked);
+            save();
+            render();
+        };
+
+        let title = document.createElement("span");
+        title.textContent = `${i+1}. ${task.text}`;
+        title.className = task.subtasks.length > 0 ? "task-title-heading" : "task-title";
+        if (task.done) title.style.textDecoration = "line-through";
+        title.style.cursor = "text";
+
+        let leftDiv = document.createElement("div");
+        leftDiv.className = "task-left";
+        leftDiv.appendChild(mainCheck);
+        leftDiv.appendChild(title);
+
+        title.onclick = () => {
+            let edit = document.createElement("input");
+            edit.className = "edit-input";
+            edit.value = task.text;
+            leftDiv.replaceChild(edit, title);
+            edit.focus();
+            edit.onblur = () => { task.text = edit.value || task.text; save(); render(); };
+            edit.onkeydown = e => { if (e.key === "Enter") edit.blur(); };
+        };
+
+        let del = document.createElement("button");
+        del.textContent = "✕";
+        del.onclick = () => { tasks.splice(i,1); save(); render(); };
+
+        row.appendChild(leftDiv);
+        row.appendChild(del);
+        card.appendChild(row);
+
+        // Subtasks
+        task.subtasks.forEach((sub, j) => {
+            let subRow = document.createElement("div");
+            subRow.className = "task-row";
+
+            let subCheck = document.createElement("input");
+            subCheck.type = "checkbox";
+            subCheck.checked = sub.done;
+            subCheck.onchange = () => {
+                sub.done = subCheck.checked;
+                task.done = task.subtasks.every(s => s.done);
+                save();
+                render();
+            };
+
+            let subTitle = document.createElement("span");
+            subTitle.textContent = `${j+1}. ${sub.text}`;
+            subTitle.className = "subtask-title";
+            if (sub.done) subTitle.style.textDecoration = "line-through";
+
+            let subLeftDiv = document.createElement("div");
+            subLeftDiv.className = "task-left";
+            subLeftDiv.appendChild(subCheck);
+            subLeftDiv.appendChild(subTitle);
+
+            subTitle.onclick = () => {
+                let edit = document.createElement("input");
+                edit.className = "edit-input";
+                edit.value = sub.text;
+                subLeftDiv.replaceChild(edit, subTitle);
+                edit.focus();
+                edit.onblur = () => { sub.text = edit.value || sub.text; save(); render(); };
+                edit.onkeydown = e => { if (e.key === "Enter") edit.blur(); };
+            };
+
+            let delSub = document.createElement("button");
+            delSub.textContent = "✕";
+            delSub.className = "delete-small";
+            delSub.onclick = () => { task.subtasks.splice(j,1); save(); render(); };
+
+            subRow.appendChild(subLeftDiv);
+            subRow.appendChild(delSub);
+            card.appendChild(subRow);
+        });
+
+        // Add subtask
+        let addRow = document.createElement("div");
+        addRow.className = "add-sub";
+        let input = document.createElement("input");
+        input.placeholder = "Add subtask (optional)...";
+        let btn = document.createElement("button");
+        btn.textContent = "+";
+        btn.onclick = () => {
+            if (!input.value.trim()) return;
+            task.subtasks.push({ text: input.value, done: false });
+            input.value = "";
+            save();
+            render();
+        };
+        addRow.appendChild(input);
+        addRow.appendChild(btn);
+        card.appendChild(addRow);
+
+        container.appendChild(card);
+    });
+}
+
+render();
+</script>
+</body>
+</html>
